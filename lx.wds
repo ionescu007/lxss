@@ -1,0 +1,68 @@
+r @$t0 = lxcore!LxGlobal
+
+.printf /D "<b>Lx Global Data</b> NTC: %lx (0x15c1 expected), Size: %lx bytes\n", wo(@$t0), wo(@$t0 + 2)
+
+r? @$t1 = (nt!_LIST_ENTRY*)@@(@$t0 + @$ptrsize)
+
+.for (r? @$t2 = @$t1->Flink; @$t2 != @$t1; r? @$t2 = @$t2->Flink)
+{
+     r @$t3 = @$t2 - @$ptrsize
+	 
+	 r @$t4 = @$t3 + 6 * @$ptrsize	
+    .printf /D "\t<b>Lx Instance {%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}</b> NTC: %lx (0x15c2 expected), Size: %lx bytes\n", dwo(@$t4), wo(@$t4 + 4), wo(@$t4 + 6), by(@$t4 + 8), by(@$t4 + 0n9), by(@$t4 + 0n10), by(@$t4 + 0n11), by(@$t4 + 0n12), by(@$t4 + 0n13), by(@$t4 + 0n14), by(@$t4 + 0n15), wo(@$t3), wo(@$t3 + 2)
+	
+	r @$t4 = @$t4 + 6 * @$ptrsize
+	.if (dwo(@$t4) = 0)
+	{
+	    .printf /D "\t\tState: CREATED\n"
+	}
+	.elsif (dwo(@$t4) = 1)
+	{
+	    .printf /D "\t\tState: STARTED\n"
+	}
+	
+	r? @$t4 = @$t4 + @$ptrsize
+	.printf /D "\t\tRoot Handle: <link cmd=\"!handle %lx 2 4\">%lx</link>\n", dwo(@$t4), dwo(@$t4)
+	r? @$t4 = @$t4 + @$ptrsize
+	.printf /D "\t\tTemp Handle: <link cmd=\"!handle %lx 2 4\">%lx</link>\n", dwo(@$t4), dwo(@$t4)
+	r? @$t4 = @$t4 + @$ptrsize
+	.printf /D "\t\tJob Handle: <link cmd=\"!handle %lx 2 4\">%lx</link>\n", dwo(@$t4), dwo(@$t4)
+
+	r? @$t4 = @$t4 + @$ptrsize
+	.printf "\t\tCreation Flags: %lx\n", dwo(@$t4)
+	
+	r? @$t4 = @$t4 + @$ptrsize
+	.printf /D "\t\tToken: <link cmd=\".foreach /pS 0n28 /ps 1000 (place { !handle %lx 2 4 }) { !token place -n }\">%lx</link>\n", dwo(@$t4), dwo(@$t4)
+
+	r? @$t4 = @$t4 + 2 * @$ptrsize
+	.printf /D "\t\tEvent Handle: <link cmd=\"!handle %lx 2 4\">%lx</link>\n", dwo(@$t4), dwo(@$t4)
+
+	r? @$t4 = @$t4 + 8 * @$ptrsize
+	.printf "\t\tLast PID: %d", dwo(@$t4)
+	
+	r? @$t4 = @$t4 + 3 * @$ptrsize
+	.printf "\t\tRunning sessions: %d\n", dwo(@$t4)
+	
+	r? @$t5 = (nt!_LIST_ENTRY*)@@(@$t4 - 2 * @$ptrsize)
+	.for (r? @$t10 = @$t5->Flink; @$t10 != @$t5; r? @$t10 = @$t10->Flink)
+	{
+		r @$t6 = @$t10 - 68
+		.printf /D "\t\t\t<b>Session 0x%p</b> (%y)\n", @$t6, poi(@$t6)
+		
+		r? @$t15 = (nt!_LIST_ENTRY*)@@(@$t6 + 90)
+		.for (r? @$t16 = @$t15->Flink; @$t16 != @$t15; r? @$t16 = @$t16->Flink)
+		{
+			r @$t17 = @$t16 - 68
+			.printf /D "\t\t\t\t<b>Process Group 0x%p</b> (%y)\n", @$t17, poi(@$t17)
+			
+			r? @$t17 = (nt!_LIST_ENTRY*)@@(@$t17 + 80)
+			.for (r? @$t18 = @$t17->Flink; @$t18 != @$t17; r? @$t18 = @$t18->Flink)
+			{
+				r @$t19 = @$t18 - 100
+				.printf /D "\t\t\t\t\t<b>Thread Group 0x%p</b> (%y) with %d threads [%msu]\n", @$t19, poi(@$t19), dwo(@$t19 + 148), @$t19 + 178
+			}
+			.printf "\n"
+		}
+		.printf "\n"
+	}
+}
