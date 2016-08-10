@@ -1,0 +1,41 @@
+$$ Define helper aliases for easy maintenance of the structure offsets
+.block { aS S_HeaderSize        (0x68)                                        }
+.block { aS S_ListOffset        (${S_HeaderSize})                             }
+.block { aS S_InstanceOffset    (${S_ListOffset}+@@(sizeof(nt!_LIST_ENTRY)))  }
+.block { aS S_ConInodeOffset    (${S_InstanceOffset}+@$ptrsize)               }
+.block { aS S_FgPidOffset       (${S_ConInodeOffset}+@$ptrsize)               }
+.block { aS S_GroupListOffset   (${S_FgPidOffset}+@$ptrsize)                  } 
+
+.block
+{
+    $$ Get the LX_SESSION from the linked list
+    r @$t0 = ${$arg1} - ${S_ListOffset}
+    .printf /D "\t\t<b><u>Session 0x%P</u></b>\n", @$t0
+
+    $$ Extract relevant fields
+    r @$t1 = poi(@$t0 + ${S_InstanceOffset})
+    r @$t5 = poi(@$t0 + ${S_ConInodeOffset})
+    r @$t6 = poi(@$t0 + ${S_FgPidOffset})
+
+    $$ Dump the LX_SESSION fields
+    .printf /D "\t\tInstance:         0x%P\n", @$t1
+    .printf /D "\t\tConsole inode:    0x%P\n", @$t5
+    .printf /D "\t\tForeground PID:   %08d\n\n", @$t6
+
+    $$ Loop the linked list of process groups in this session
+    r? @$t3 = (nt!_LIST_ENTRY*)@@(@$t0 + ${S_GroupListOffset})
+    .for (r? @$t2 = @$t3->Flink;
+          @$t2 != @$t3;
+          r? @$t2 = @$t2->Flink)
+    {
+        $$ For each process group, dump it
+	.push /r /q
+        $$>a< c:\lx\lx-pg.wds @$t2
+        .pop /r /q
+    }
+
+    $$ Separate this session from the next
+    .printf "\n"   
+}
+
+ad *
