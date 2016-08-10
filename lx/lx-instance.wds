@@ -1,0 +1,87 @@
+$$ Define helper aliases for easy maintenance of the structure offsets
+.block { aS I_HeaderSize        (@$ptrsize)                                                       }
+.block { aS I_ListOffset        (${I_HeaderSize})                                                 }
+.block { aS I_RefCountOffset    (${I_ListOffset}+@@c++(sizeof(nt!_LIST_ENTRY)))                   }
+.block { aS I_GlobalDataOffset  (${I_RefCountOffset}+2*@$ptrsize)                                 }
+.block { aS I_GuidOffset        (${I_GlobalDataOffset}+@$ptrsize)                                 }
+.block { aS I_UnknownTimeOffset (${I_GuidOffset}+@@c++(sizeof(nt!_GUID)))                         }
+.block { aS I_OtherTimeOffset   (${I_UnknownTimeOffset}+@@c++(sizeof(nt!_LARGE_INTEGER)))         }
+.block { aS I_StateOffset       (${I_OtherTimeOffset}+@@c++(sizeof(nt!_LARGE_INTEGER))+2*@$ptrsize)}
+.block { aS I_RootHandleOffset  (${I_StateOffset}+@$ptrsize)                                      }
+.block { aS I_TempHandleOffset  (${I_RootHandleOffset}+@$ptrsize)                                 }
+.block { aS I_JobHandleOffset   (${I_TempHandleOffset}+@$ptrsize)                                 }
+.block { aS I_FlagsOffset       (${I_JobHandleOffset}+@$ptrsize)                                  }
+.block { aS I_TokenHandleOffset (${I_FlagsOffset}+@$ptrsize)                                      }
+.block { aS I_EventHandleOffset (${I_TokenHandleOffset}+2*@$ptrsize)                              }
+.block { aS I_PathCountOffset   (${I_EventHandleOffset}+@$ptrsize)                                }
+.block { aS I_PathsOffset       (${I_PathCountOffset}+@$ptrsize)                                  }
+.block { aS I_VfsContextOffset  (${I_PathsOffset}+@$ptrsize)                                      }
+.block { aS I_MemoryFlagsOffset (${I_VfsContextOffset}+@$ptrsize)                                 }
+.block { aS I_LastPidOffset     (${I_MemoryFlagsOffset}+4*@$ptrsize)                              }
+.block { aS I_SessionListOffset (${I_LastPidOffset}+@$ptrsize)                                    }
+.block { aS I_GroupCountOffset  (${I_SessionListOffset}+@@c++(sizeof(nt!_LIST_ENTRY)))            }
+
+.block
+{
+    $$ Get the LX_INSTANCE from the linked list
+    r @$t0 = ${$arg1} - ${I_ListOffset}
+    .printf /D "\t<b><u>Instance 0x%P</u></b>\n", @$t0
+
+    $$ Dump its GUID
+    r? @$t5 = (nt!_GUID*)(@$t0 + ${I_GuidOffset})
+    .printf /D "\tInstance Guid:    "
+    .foreach /pS 0n4 /ps 1000 (place { ?? @$t5 }) { .echo place }
+
+    $$ Extract relevant fields
+    r @$t1 = poi(@$t0 + ${I_StateOffset})
+    r @$t6 = poi(@$t0 + ${I_GlobalDataOffset})
+    r @$t7 = poi(@$t0 + ${I_RootHandleOffset})
+    r @$t8 = poi(@$t0 + ${I_TempHandleOffset})
+    r @$t9 = poi(@$t0 + ${I_JobHandleOffset})
+    r @$t10 = poi(@$t0 + ${I_TokenHandleOffset})
+    r @$t11 = poi(@$t0 + ${I_EventHandleOffset})
+    r @$t12 = dwo(@$t0 + ${I_FlagsOffset})
+    r @$t13 = dwo(@$t0 + ${I_PathCountOffset})
+    r @$t14 = poi(@$t0 + ${I_PathsOffset})
+    r @$t15 = poi(@$t0 + ${I_VfsContextOffset})
+    r @$t16 = poi(@$t0 + ${I_MemoryFlagsOffset})
+    r @$t17 = poi(@$t0 + ${I_LastPidOffset})
+    r @$t19 = poi(@$t0 + ${I_GroupCountOffset})
+
+    $$ Dump the LX_INSTANCE fields
+    .if (@$t1 = 0)
+    {
+        .printf /D "\t\tState:            0 [CREATED]\n"
+    }
+    .elsif (@$t1 = 1)
+    {
+        .printf /D "\tState:            1 [STARTED]\n"
+    }
+    .printf /D "\tCreation Flags:   %08lX\n", @$t12
+    .printf /D "\tGlobalData:       0x%P\n\n", @$t6
+    .printf /D "\tRoot Handle:      <link cmd=\"!handle %lx 2 4\">%lx</link>\n", @$t7, @$t7
+    .printf /D "\tTemp Handle:      <link cmd=\"!handle %lx 2 4\">%lx</link>\n", @$t8, @$t8
+    .printf /D "\tJob Handle:       <link cmd=\"!handle %lx 2 4\">%lx</link>\n", @$t9, @$t9
+    .printf /D "\tToken:            <link cmd=\".foreach /pS 0n28 /ps 1000 (place { !handle %lx 2 4 }) { !token place -n }\">%lx</link>\n", @$t10, @$t10
+    .printf /D "\tEvent Handle:     <link cmd=\"!handle %lx 2 4\">%lx</link>\n\n", @$t11, @$t11
+    .printf /D "\tMap Paths (%d):    0x%P\n", @$t13, @$t14
+    .printf /D "\tVFS Context:      0x%P\n", @$t15
+    .printf /D "\tMemory Flags:     0x%llX\n\n", @$t16
+    .printf /D "\tLast PID:         %d\n", @$t17
+    .printf /D "\tThread Groups:    %d\n\n", @$t19
+
+    $$ Loop the list of sessions inside of this instance
+    r? @$t18 = (nt!_LIST_ENTRY*)(@$t0 + ${I_SessionListOffset})
+    .for (r? @$t2 = @$t18->Flink; @$t2 != @$t18; r? @$t2 = @$t2->Flink)
+    {
+        $$ Dump each session in the list 
+        .push /r /q
+        $$>a< c:\lx\lx-session.wds @$t2
+        .pop /r /q
+    }
+
+    $$ Separate this instnace from the next
+    .printf "\n"   
+}
+
+ad *

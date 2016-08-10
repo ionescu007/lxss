@@ -1,0 +1,63 @@
+$$ Define helper aliases for easy maintenance of the structure offsets
+.block { aS HeaderSize        (0x68)                                           }
+.block { aS TimevalSize       (2*8)                                            }
+.block { aS RusageSize        (2*${TimevalSize}+0n14*8)                        }
+.block { aS ProcOffset        (${HeaderSize})                                  }
+.block { aS RusageOffset      (${ProcOffset}+@$ptrsize)                        }
+.block { aS ListOffset        (${RusageOffset}+${RusageSize})                  }
+.block { aS FlagsOffset       (${ListOffset}+@@(sizeof(nt!_LIST_ENTRY)))       }
+.block { aS ProcGroupOffset   (${FlagsOffset}+@$ptrsize)                       }
+.block { aS ThreadListOffset  (${ProcGroupOffset}+4*@$ptrsize)                 }
+.block { aS ThreadCountOffset (${ThreadListOffset}+@@(sizeof(nt!_LIST_ENTRY))) }
+.block { aS MainThreadOffset  (${ThreadCountOffset}+@$ptrsize)                 }
+.block { aS FdTableOffset     (${MainThreadOffset}+@$ptrsize)                  }
+.block { aS FileOffset        (${FdTableOffset}+3*@$ptrsize)                   }
+.block { aS PathOffset        (${FileOffset}+@$ptrsize)                        }
+.block { aS MaskOffset        (${PathOffset}+@@(sizeof(nt!_UNICODE_STRING)))   }
+.block { aS FutexDataSize     (0x38)                                           }
+.block { aS SigactionOffset   (${MaskOffset}+@$ptrsize+${FutexDataSize})       }
+.block { aS SigactionSize     (0n64*(4*@$ptrsize))                             }
+.block { aS SiginfoOffset     (${SigactionOffset}+${SigactionSize})            }
+.block { aS SiginfoSize       (0n64*(3*4+0x24))                                }
+.block { aS ArgumentsOffset   (${SiginfoOffset}+${SiginfoSize}+@$ptrsize)      }
+.block { aS ArgsSizeOffset    (${ArgumentsOffset}+@$ptrsize)                   }
+
+.block
+{
+    $$ Get the LX_THREADGROUP from the linked list
+    r @$t0 = ${$arg1} - ${ListOffset}
+    .printf /D "\t\t\t\t<b><u>Thread Group 0x%P</u></b>\n", @$t0
+
+    $$ Extract relevant fields
+    r @$t1 = @$t0     + ${PathOffset}
+    r @$t2 = dwo(@$t0 + ${ThreadCountOffset})
+    r @$t3 = dwo(@$t0 + ${FlagsOffset})
+    r @$t4 = poi(@$t0 + ${ProcGroupOffset})
+    r @$t5 = poi(@$t0 + ${FdTableOffset})
+    r @$t6 = poi(@$t0 + ${MainThreadOffset})
+    r @$t7 = poi(@$t0 + ${MaskOffset}) 
+    r @$t8 = dwo(poi(@$t0 + ${FileOffset}))
+    r @$t9 = poi(@$t0 + ${ArgumentsOffset}) 
+    r @$t10 = dwo(@$t0 + ${ArgsSizeOffset}) 
+    r @$t11 = poi(@$t0 + ${ProcOffset})
+
+    $$ Print out path
+    .printf /D "\t\t\t\tBinary Path:           %msu\n", @$t1
+
+    $$ Dump the internal LX_PROCESS
+    .push /r /q
+    $$>a< c:\lx\lx-proc.wds @$t11
+    .pop /r /q
+
+    $$ Dump the fields inside of LX_THREADGROUP
+    .printf /D "\t\t\t\tThread(s):             %d\n", @$t2
+    .printf /D "\t\t\t\tOwner Process Group:   0x%P\n", @$t4
+    .printf /D "\t\t\t\tFlags:                 0x%08lX\n", @$t3
+    .printf /D "\t\t\t\tFile Descriptor Table: 0x%P\n", @$t5
+    .printf /D "\t\t\t\tMain Thread:           0x%P\n", @$t6
+    .printf /D "\t\t\t\tThread umask:          0x%08lX\n", @$t7
+    .printf /D "\t\t\t\tFile Handle:           0x%08lX\n", @$t8
+    .printf /D "\t\t\t\tArguments (%03d bytes): 0x%P\n\n", @$t10, @$t9
+}
+
+ad *

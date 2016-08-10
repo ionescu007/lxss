@@ -1,0 +1,28 @@
+$$ Define helper aliases for easy maintenance of the structure offsets
+.block { aS P_InstanceOffset    (0)                                                }
+.block { aS P_ProcObjectOffset  (${P_InstanceOffset}+@$ptrsize)                    }
+.block { aS P_ProcHandleOffset  (${P_ProcObjectOffset}+@$ptrsize)                  }
+.block { aS P_VdsoOffset        (${P_ProcHandleOffset}+@$ptrsize)                  }
+.block { aS P_StackOffset       (${P_VdsoOffset}+@$ptrsize)                        }
+
+.block
+{
+    $$ Get the LX_PROCESS structure
+    r @$t0 = ${$arg1}
+    .printf /D "\t\t\t\tProcess:               0x%P\n", @$t0
+
+    $$ Extract relevant fields
+    r @$t1 = poi(@$t0 + ${P_InstanceOffset})
+    r @$t2 = poi(@$t0 + ${P_ProcObjectOffset})
+    r @$t3 = poi(@$t0 + ${P_ProcHandleOffset})
+    r @$t4 = poi(@$t0 + ${P_VdsoOffset})
+    r @$t5 = poi(@$t0 + ${P_StackOffset})
+
+    .printf /D "\t\t\t\t\tInstance:            0x%P\n", @$t1
+    .printf /D "\t\t\t\t\tNT Process Object:   0x%P\n", @$t2
+    .printf /D "\t\t\t\t\tNT Process Handle:   0x%P\n", @$t3
+    .printf /D "\t\t\t\t\tVDSO Address:        0x%P\n", @$t4
+    .printf /D "\t\t\t\t\tStack Address:       0x%P\n", @$t5
+}
+
+ad *
