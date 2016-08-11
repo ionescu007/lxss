@@ -6,6 +6,12 @@ DEFINE_GUID(lxSessionGuid, 0x536A6BCF, 0xFE04, 0x41D9, 0xB9, 0x78, 0xDC, 0xAC, 0
 DEFINE_GUID(lxInstanceGuid, 0x8F9E8123, 0x58D4, 0x484A, 0xAC, 0x25, 0x7E, 0xF7, 0xD5, 0xF7, 0x44, 0x8F);
 
 typedef HRESULT
+(STDMETHODCALLTYPE *PLX_SESSION_GET_CURRENT_INSTANCE) (
+    _In_ struct _LX_SESSION** This,
+    _Out_ PVOID* InstanceOut
+    );
+
+typedef HRESULT
 (STDMETHODCALLTYPE *PLX_SESSION_START_DEFAULT_INSTANCE) (
     _In_ struct _LX_SESSION** This,
     _In_ const IID& InstanceIid,
@@ -17,7 +23,7 @@ typedef struct _LX_SESSION
     PVOID Self;
     PVOID AddRef;
     PVOID Release;
-    PVOID GetCurrentInstance;
+    PLX_SESSION_GET_CURRENT_INSTANCE GetCurrentInstance;
     PLX_SESSION_START_DEFAULT_INSTANCE StartDefaultInstance;
     PVOID SetState;
     PVOID QueryState;
@@ -47,7 +53,8 @@ typedef struct _LXSS_CONSOLE_DATA
     USHORT Height;
 } LXSS_CONSOLE_DATA, *PLXSS_CONSOLE_DATA;
 
-typedef HRESULT (STDMETHODCALLTYPE *PLX_INSTANCE_CREATE_LX_PROCESS) (
+typedef HRESULT
+(STDMETHODCALLTYPE *PLX_INSTANCE_CREATE_LX_PROCESS) (
     _In_ struct _LX_INSTANCE** This,
     _In_ PCCH CommandLine,
     _In_ ULONG ArgumentCount,
@@ -62,6 +69,13 @@ typedef HRESULT (STDMETHODCALLTYPE *PLX_INSTANCE_CREATE_LX_PROCESS) (
     _Out_ PULONG ProcessHandle
     );
 
+typedef HRESULT
+(STDMETHODCALLTYPE *PLX_INSTANCE_REGISTER_ADSS_BUS_SERVER)(
+    _In_ struct _LX_INSTANCE** This,
+    _In_ PCCH ServerName,
+    _Out_ PULONG ServerHandle
+    );
+
 typedef struct _LX_INSTANCE
 {
     PVOID QueryInterface;
@@ -72,7 +86,7 @@ typedef struct _LX_INSTANCE
     PVOID QueryState;
     PVOID SetState;
     PLX_INSTANCE_CREATE_LX_PROCESS CreateLxProcess;
-    PVOID RegisterAdssBusServer;
+    PLX_INSTANCE_REGISTER_ADSS_BUS_SERVER RegisterAdssBusServer;
     PVOID ConnectAdssBusServer;
     PVOID Destroy;
     PVOID GetState;

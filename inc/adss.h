@@ -1,6 +1,18 @@
 #pragma once
 
 //
+// For Linux Compatibility
+//
+#ifndef CTL_CODE
+#define FILE_ANY_ACCESS                 0
+#define FILE_DEVICE_UNKNOWN             0x00000022
+#define METHOD_NEITHER                  3
+#define CTL_CODE( DeviceType, Function, Method, Access ) (                 \
+    ((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method) \
+)
+#endif
+
+//
 // Root Bus IOCTLs
 //
 #define IOCTL_ADSS_CONTROL_DEVICE_CREATE_INSTANCE           CTL_CODE(FILE_DEVICE_UNKNOWN, 0x1B, METHOD_NEITHER, FILE_ANY_ACCESS)
@@ -24,13 +36,28 @@
 //
 // Bus Client IOCTLs
 //
-#define IOCTL_ADSS_REGISTER_SERVER                          CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0A, METHOD_NEITHER, FILE_ANY_ACCESS)
-#define IOCTL_ADSS_CONNECT_SERVER                           CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0B, METHOD_NEITHER, FILE_ANY_ACCESS)
+#define IOCTL_ADSS_BUS_CLIENT_REGISTER_SERVER               CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0A, METHOD_NEITHER, FILE_ANY_ACCESS)
+#define IOCTL_ADSS_BUS_CLIENT_CONNECT_SERVER                CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0B, METHOD_NEITHER, FILE_ANY_ACCESS)
+typedef union _ADSS_BUS_CLIENT_CONNECT_SERVER_MSG
+{
+    struct
+    {
+        const char* ServerName;
+        unsigned int Timeout;
+        unsigned int Flags;
+    };
+    signed int ServerHandle;
+} ADSS_BUS_CLIENT_CONNECT_SERVER_PARAMETERS, PADSS_BUS_CLIENT_CONNECT_SERVER_PARAMETERS;
 
 //
 // Server Port IOCTLs
 //
 #define IOCTL_ADSS_IPC_SERVER_WAIT_FOR_CONNECTION           CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0C, METHOD_NEITHER, FILE_ANY_ACCESS)
+typedef union _ADSS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG
+{
+    unsigned int Timeout;
+    unsigned int ClientHandle;
+} ADSS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG, *PADSS_IPC_SERVER_WAIT_FOR_CONNECTION_MSG;
 
 //
 // Message Port IOCTLs
