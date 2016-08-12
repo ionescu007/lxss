@@ -59,7 +59,7 @@ main (
     // Open, or create, the LXSS parameters key
     //
     hr = RegCreateKeyExW(HKEY_LOCAL_MACHINE,
-                         L"SYSTEM\\CurrentControlSet\\Services\\lxss\\Parameters", 
+                         L"SYSTEM\\CurrentControlSet\\Services\\lxss", 
                          NULL,
                          NULL,
                          0,
@@ -67,50 +67,29 @@ main (
                          NULL,
                          &lxKey,
                          &disposition);
-    if (!SUCCEEDED(hr))
+    if (!(SUCCEEDED(hr)) || (disposition == REG_CREATED_NEW_KEY))
     {
-        wprintf(L"Failed to access LXSS parameters key. "
+        wprintf(L"Failed to access LXSS key. "
                 L"Are you running as Admin? Is LXSS installed?\n");
         return hr;
     }
 
     //
-    // Check if a parameters key was already present
+    // Check its current value
     //
-    if (disposition == REG_OPENED_EXISTING_KEY)
-    {
-        //
-        // Check its current value
-        //
-        hr = RegQueryValueExW(lxKey,
-                              L"RootAdssbusAccess",
-                              NULL,
-                              &type,
-                              (LPBYTE)&accessAllowed,
-                              &accessSize);
-        if ((accessAllowed == 0) || (hr == ERROR_NOT_FOUND))
-        {
-            wprintf(L"Root ADSS Bus Access is disabled."
-                    L"It will now be enabled -- please reboot.\n");
-        }
-        else if (!SUCCEEDED(hr))
-        {
-            //
-            // This should never happen
-            //
-            assert(SUCCEEDED(hr));
-            return hr;
-        }
-    }
-
-    //
-    // Check if Root Bus Access must be enabled
-    //
-    if (accessAllowed == 0)
+    hr = RegQueryValueExW(lxKey,
+                          L"RootAdssbusAccess",
+                          NULL,
+                          &type,
+                          (LPBYTE)&accessAllowed,
+                          &accessSize);
+    if ((accessAllowed == 0) || (hr == ERROR_NOT_FOUND))
     {
         //
         // Enable it -- a reboot will be required
         //
+        wprintf(L"Root ADSS Bus Access is disabled."
+                L"It will now be enabled -- please reboot.\n");
         accessAllowed = 1;
         hr = RegSetValueExW(lxKey,
                             L"RootAdssbusAccess",
@@ -118,6 +97,14 @@ main (
                             type,
                             (LPBYTE)&accessAllowed,
                             accessSize);
+        return hr;
+    }
+    else if (!SUCCEEDED(hr))
+    {
+        //
+        // This should never happen
+        //
+        assert(SUCCEEDED(hr));
         return hr;
     }
 

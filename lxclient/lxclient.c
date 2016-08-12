@@ -12,7 +12,7 @@ main (
     char* Arguments[]
     )
 {
-    ADSS_BUS_CLIENT_CONNECT_SERVER_PARAMETERS connectMsg;
+    ADSS_BUS_CLIENT_CONNECT_SERVER_MSG connectMsg;
     __int32_t lxBusFd, error;
     __int8_t verboseMode;
     size_t size;
@@ -71,7 +71,7 @@ main (
     if (verboseMode) printf("Connecting to lxserver...\n");
     connectMsg.Timeout = 0xFFFFFFFF;
     connectMsg.ServerName = "lxserver";
-    connectMsg.Flags = 1;
+    connectMsg.Flags = ADSS_CONNECT_WAIT_FOR_SERVER_FLAG;
     error = ioctl(lxBusFd, IOCTL_ADSS_BUS_CLIENT_CONNECT_SERVER, &connectMsg);
     if (error != 0)
     {
