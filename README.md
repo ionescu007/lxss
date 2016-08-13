@@ -18,8 +18,8 @@ LxExt is an ld.preload extension for the init daemon, which creates a UNIX Domai
 Note that due to bugs in the Linux 1.0 support for Visual Studio, G++ seems to fail to link the .so, and ignores C++ standard setttings such that typeof() does not work. You should compile this in the LX environment directly with the following command-line:
 ```gcc lxext.c -ldl -lpthread -shared -fPIC -Wall -Wno-unknown-pragmas -o ~/lxext.so```
 
-Finally, you will need to do the following to allow lxext.so to load:
-```sudo echo /home/<username>/lxext.so > /etc/ld.so.preload``` making sure to replace <username> with your LX user name.
+Finally, you will need add the following line into ```/etc/ld.so.preload``` to allow lxext.so to load:
+``` /home/<username>/lxext.so``` making sure to replace <username> with your LX user name and running the editor as root.
 
 ## LxExec
 LXExec is a client for LxExt. It connects to the UNIX Domain Socket and sends the input command line to it. This avoids needing to run as root, such as lxclient before. Simply run it as ```lxexec calc``` as an example, making sure that lxserver is running on the Win32 side.
