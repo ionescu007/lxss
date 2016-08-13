@@ -19,7 +19,7 @@ Note that due to bugs in the Linux 1.0 support for Visual Studio, G++ seems to f
 ```gcc lxext.c -ldl -lpthread -shared -fPIC -Wall -Wno-unknown-pragmas -o ~/lxext.so```
 
 Finally, you will need to do the following to allow lxext.so to load:
-```sudo cat /home/<username>/lxext.so > /etc/ld.so.preload``` making sure to replace <username> with your LX user name.
+```sudo echo /home/<username>/lxext.so > /etc/ld.so.preload``` making sure to replace <username> with your LX user name.
 
 ## LxExec
 LXExec is a client for LxExt. It connects to the UNIX Domain Socket and sends the input command line to it. This avoids needing to run as root, such as lxclient before. Simply run it as ```lxexec calc``` as an example, making sure that lxserver is running on the Win32 side.
