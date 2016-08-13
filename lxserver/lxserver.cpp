@@ -30,9 +30,9 @@ main (
     //
     // Print banner and help if we got invalid arguments
     //
-    wprintf(L"LxServer v1.0.0 -- (c) Copyright 2016 Alex Ionescu\n");
+    wprintf(L"LxServer v1.0.5 -- (c) Copyright 2016 Alex Ionescu\n");
     wprintf(L"Visit http://github.com/ionescu007/lxss for more information.\n\n");
-    if (ArgumentCount > 1)
+    if (ArgumentCount > 2)
     {
         wprintf(L"USAGE: LxServer [-v]\n");
         wprintf(L"-v    Verbose mode\n");
