@@ -8,23 +8,31 @@
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalOptions>-Wno-unknown-pragmas -shared %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-Wno-unknown-pragmas -shared -fPIC %(AdditionalOptions)</AdditionalOptions>
       <Verbose>true</Verbose>
-      <PositionIndependentCode>true</PositionIndependentCode>
+      <WarningLevel>EnableAllWarnings</WarningLevel>
       <CLanguageStandard>gnu11</CLanguageStandard>
-      <CppLanguageStandard>gnu++1y</CppLanguageStandard>
-      <CompileAs>CompileAsCpp</CompileAs>
+      <CppLanguageStandard>Default</CppLanguageStandard>
     </ClCompile>
     <Link>
-      <LibraryDependencies>pthread</LibraryDependencies>
+      <LibraryDependencies>pthread;dl</LibraryDependencies>
       <ShowProgress>
       </ShowProgress>
       <VerboseOutput>
       </VerboseOutput>
+      <OutputFile>lxext.so</OutputFile>
+      <AdditionalOptions>-shared %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="lxext.c" />
+    <ClCompile Include="lxext.c">
+      <CLanguageStandard>gnu11</CLanguageStandard>
+      <CppLanguageStandard>Default</CppLanguageStandard>
+      <ThreadSafeStatics>
+      </ThreadSafeStatics>
+      <RuntimeTypeInfo>
+      </RuntimeTypeInfo>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\inc\adss.h" />
