@@ -7,6 +7,8 @@
 #include "..\inc\lxssmanager.h"
 #include "..\inc\adss.h"
 
+HANDLE CaptureImpersonationToken();
+
 INT
 main (
     _In_ ULONG ArgumentCount,
@@ -24,88 +26,113 @@ main (
     LARGE_INTEGER byteOffset;
     CHAR readBuffer[MAX_PATH];
     HANDLE hEvent;
-    BOOLEAN verboseMode;
+    BOOLEAN verboseMode, tokenMode, extensionMode;
+    ULONG i;
+    BOOL bRes;
+    HANDLE hToken;
+    ADSS_IPC_CONNECTION_MARSHAL_FORK_TOKEN_MSG tokenMsg;
+    HANDLE clientHandle;
     UNREFERENCED_PARAMETER(Arguments);
 
     //
     // Print banner and help if we got invalid arguments
     //
-    wprintf(L"LxServer v1.0.5 -- (c) Copyright 2016 Alex Ionescu\n");
+    wprintf(L"LxServer v1.1.5 -- (c) Copyright 2016 Alex Ionescu\n");
     wprintf(L"Visit http://github.com/ionescu007/lxss for more information.\n\n");
-    if (ArgumentCount > 2)
+
+    //
+    // Check argument settings
+    //
+    verboseMode = tokenMode = extensionMode = 0;
+    for (i = 0; i < ArgumentCount; i++)
     {
-        wprintf(L"USAGE: LxServer [-v]\n");
-        wprintf(L"-v    Verbose mode\n");
-        return -1;
+        if (strcmp(Arguments[i], "-v") == 0)
+        {
+            verboseMode = 1;
+        }
+        else if (strcmp(Arguments[i], "-h") == 0)
+        {
+            wprintf(L"USAGE: LxServer [-v | -t | -e]\n");
+            wprintf(L"-e    Extension mode (don't enable ADSS Bus access)\n");
+            wprintf(L"-t    Token donation mode (send a token for fork())\n");
+            wprintf(L"-v    Verbose mode\n");
+            wprintf(L"-h    Display help\n");
+            return -1;
+        }
+        else if (strcmp(Arguments[i], "-t") == 0)
+        {
+            tokenMode = 1;
+        }
+        else if (strcmp(Arguments[i], "-e") == 0)
+        {
+            extensionMode = 1;
+        }
     }
 
     //
-    // Check if verbosity was requested
+    // Check if extension mode is NOT used (i..e: standalone client on Lx side)
     //
-    verboseMode = 0;
-    if ((ArgumentCount == 2) && (strcmp(Arguments[1], "-v") == 0))
+    if (extensionMode == 0)
     {
-        verboseMode = 1;
-    }
+        //
+        // Configure parameters for registry value access
+        //
+        type = REG_DWORD;
+        accessSize = sizeof(accessAllowed);
+        accessAllowed = 0;
 
-    //
-    // Configure parameters for registry value access
-    //
-    type = REG_DWORD;
-    accessSize = sizeof(accessAllowed);
-    accessAllowed = 0;
+        //
+        // Open, or create, the LXSS parameters key
+        //
+        hr = RegCreateKeyExW(HKEY_LOCAL_MACHINE,
+                             L"SYSTEM\\CurrentControlSet\\Services\\lxss",
+                             NULL,
+                             NULL,
+                             0,
+                             KEY_ALL_ACCESS,
+                             NULL,
+                             &lxKey,
+                             &disposition);
+        if (!(SUCCEEDED(hr)) || (disposition == REG_CREATED_NEW_KEY))
+        {
+            wprintf(L"Failed to access LXSS key. "
+                    L"Are you running as Admin? Is LXSS installed?\n");
+            return hr;
+        }
 
-    //
-    // Open, or create, the LXSS parameters key
-    //
-    hr = RegCreateKeyExW(HKEY_LOCAL_MACHINE,
-                         L"SYSTEM\\CurrentControlSet\\Services\\lxss", 
-                         NULL,
-                         NULL,
-                         0,
-                         KEY_ALL_ACCESS,
-                         NULL,
-                         &lxKey,
-                         &disposition);
-    if (!(SUCCEEDED(hr)) || (disposition == REG_CREATED_NEW_KEY))
-    {
-        wprintf(L"Failed to access LXSS key. "
-                L"Are you running as Admin? Is LXSS installed?\n");
-        return hr;
-    }
-
-    //
-    // Check its current value
-    //
-    hr = RegQueryValueExW(lxKey,
-                          L"RootAdssbusAccess",
-                          NULL,
-                          &type,
-                          (LPBYTE)&accessAllowed,
-                          &accessSize);
-    if ((accessAllowed == 0) || (hr == ERROR_NOT_FOUND))
-    {
         //
-        // Enable it -- a reboot will be required
+        // Check its current value
         //
-        wprintf(L"Root ADSS Bus Access is disabled."
-                L"It will now be enabled -- please reboot.\n");
-        accessAllowed = 1;
-        hr = RegSetValueExW(lxKey,
-                            L"RootAdssbusAccess",
-                            0,
-                            type,
-                            (LPBYTE)&accessAllowed,
-                            accessSize);
-        return hr;
-    }
-    else if (!SUCCEEDED(hr))
-    {
-        //
-        // This should never happen
-        //
-        assert(SUCCEEDED(hr));
-        return hr;
+        hr = RegQueryValueExW(lxKey,
+                              L"RootAdssbusAccess",
+                              NULL,
+                              &type,
+                              (LPBYTE)&accessAllowed,
+                              &accessSize);
+        if ((accessAllowed == 0) || (hr == ERROR_NOT_FOUND))
+        {
+            //
+            // Enable it -- a reboot will be required
+            //
+            wprintf(L"Root ADSS Bus Access is disabled."
+                    L"It will now be enabled -- please reboot.\n");
+            accessAllowed = 1;
+            hr = RegSetValueExW(lxKey,
+                                L"RootAdssbusAccess",
+                                0,
+                                type,
+                                (LPBYTE)&accessAllowed,
+                                accessSize);
+            return hr;
+        }
+        else if (!SUCCEEDED(hr))
+        {
+            //
+            // This should never happen
+            //
+            assert(SUCCEEDED(hr));
+            return hr;
+        }
     }
 
     //
@@ -125,10 +152,10 @@ main (
                               -1,
                               NULL,
                               NULL,
-                              RPC_C_AUTHN_LEVEL_DEFAULT,
+                              RPC_C_AUTHN_LEVEL_CONNECT,
                               SecurityDelegation,
                               NULL,
-                              EOAC_STATIC_CLOAKING,
+                              EOAC_DYNAMIC_CLOAKING,
                               NULL);
     if (!SUCCEEDED(hr))
     {
@@ -218,10 +245,11 @@ main (
         //
         // Connection established!
         //
+        clientHandle = ULongToHandle(waitForConnectionMsg.ClientHandle);
         if (verboseMode)
         {
-            wprintf(L"Connected to client on port handle 0x%08lX\n",
-                    waitForConnectionMsg.ClientHandle);
+            wprintf(L"Connected to client on port handle 0x%p\n",
+                    clientHandle);
         }
 
         //
@@ -249,7 +277,7 @@ main (
             // Read a client message
             //
             RtlZeroMemory(readBuffer, sizeof(readBuffer));
-            hr = NtReadFile(ULongToHandle(waitForConnectionMsg.ClientHandle),
+            hr = NtReadFile(clientHandle,
                             hEvent,
                             NULL,
                             NULL,
@@ -271,13 +299,17 @@ main (
                 WaitForSingleObject(hEvent, INFINITE);
                 hr = ioStatusBlock.Status;
             }
-            else if (hr == STATUS_CONNECTION_DISCONNECTED)
+
+            //
+            // Check if the client has disconnected by now
+            //
+            if (hr == STATUS_CONNECTION_DISCONNECTED)
             {
                 //
                 // The client disconnected -- go and wait for a new one
                 //
                 if (verboseMode) wprintf(L"lxss client has disconnected\n");
-                CloseHandle(ULongToHandle(waitForConnectionMsg.ClientHandle));
+                CloseHandle(clientHandle);
                 CloseHandle(hEvent);
                 break;
             }
@@ -292,14 +324,78 @@ main (
             else if (SUCCEEDED(hr))
             {
                 //
-                // Launch whatever the client sent us
+                // Check if token mode is active and we received a token request
                 //
-                if (verboseMode) wprintf(L"Launching %S...\n", readBuffer);
-                WinExec(readBuffer, SW_SHOWDEFAULT);
+                if ((tokenMode == 1) && (readBuffer[0] == '\0'))
+                {
+                    hToken = CaptureImpersonationToken();
+                    if (hToken == NULL)
+                    {
+                        wprintf(L"Error opening thread token: 0x%08lX\n",
+                                GetLastError());
+                        CloseHandle(clientHandle);
+                        continue;
+                    }
+
+                    //
+                    // Marshal it
+                    //
+                    tokenMsg.TokenHandle = HandleToUlong(hToken);
+                    bRes = DeviceIoControl(clientHandle,
+                                           IOCTL_ADSS_IPC_CONNECTION_MARSHAL_FORK_TOKEN,
+                                           &tokenMsg,
+                                           sizeof(tokenMsg),
+                                           &tokenMsg,
+                                           sizeof(tokenMsg),
+                                           NULL,
+                                           NULL);
+                    if (bRes == FALSE)
+                    {
+                        CloseHandle(hToken);
+                        wprintf(L"Error marshalling thread token: 0x%08lX\n",
+                                GetLastError());
+                        continue;
+                    }
+
+                    //
+                    // Write the ID such that the LX side can unmarshal it
+                    //
+                    hr = NtWriteFile(clientHandle,
+                                     hEvent,
+                                     NULL,
+                                     NULL,
+                                     &ioStatusBlock,
+                                     &tokenMsg.TokenId,
+                                     sizeof(tokenMsg.TokenId),
+                                     &byteOffset,
+                                     NULL);
+                    if (hr == STATUS_PENDING)
+                    {
+                        //
+                        // Wait for one
+                        //
+                        WaitForSingleObject(hEvent, INFINITE);
+                        hr = ioStatusBlock.Status;
+                    }
+
+                    //
+                    // Close the handle
+                    //
+                    CloseHandle(hToken);
+                }
+                else
+                {
+                    //
+                    // Launch whatever the client sent us
+                    //
+                    if (verboseMode) wprintf(L"Launching %S...\n", readBuffer);
+                    WinExec(readBuffer, SW_SHOWDEFAULT);
+                }
             }
             else
             {
                 wprintf(L"Unexpected read error: 0x%08lX\n", hr);
+                break;
             }
         }
     }

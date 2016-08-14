@@ -1,5 +1,5 @@
 $$ Define helper aliases for easy maintenance of the structure offsets
-.block { aS G_HeaderSize         (@$ptrsize)                                                       }
+.block { aS G_HeaderSize         @@masm(@$ptrsize)                                                 }
 .block { aS G_InstanceListOffset (${G_HeaderSize})                                                 }
 
 .block

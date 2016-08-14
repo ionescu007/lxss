@@ -12,34 +12,50 @@ main (
     char* Arguments[]
     )
 {
-    __int32_t error, socketFd;
-    __int8_t verboseMode;
+    __int32_t error, socketFd, i;
+    __int8_t verboseMode, tokenMode;
     size_t size;
     struct sockaddr_un addr;
 
     //
     // Print banner and usage information
     //
-    printf("LxExec v1.0.0 -- (c) Copyright 2016 Alex Ionescu\n");
+    printf("LxExec v1.1.0 -- (c) Copyright 2016 Alex Ionescu\n");
     printf("Visit http://github.com/ionescu007/lxss for more information.\n\n");
-    if ((ArgumentCount < 2) || (strcmp(Arguments[1], "-h") == 0))
+
+    //
+    // If we don't have invalid arguments, show the help
+    //
+    if (ArgumentCount < 2)
     {
-        printf("lxexec <windows path to executable> [-v] [-h]\n");
-        printf("Options:\n");
-        printf("  -v    Enable verbose mode\n");
-        printf("  -h    This cruft\n");
-        printf("Launches the Win32 binary specified in the path. "
-               "See man page for examples.\n");
-        return EINVAL;
+        Arguments[0] = "-h";
     }
 
     //
-    // Check if verbosity was requested
+    // Check argument settings
     //
-    verboseMode = 0;
-    if ((ArgumentCount == 3) && (strcmp(Arguments[2], "-v") == 0))
+    verboseMode = tokenMode  = 0;
+    for (i = 0; i < ArgumentCount; i++)
     {
-        verboseMode = 1;
+        if (strcmp(Arguments[i], "-v") == 0)
+        {
+            verboseMode = 1;
+        }
+        else if (strcmp(Arguments[i], "-h") == 0)
+        {
+            printf("lxexec <windows path to executable> [-v] [-t] [-h]\n");
+            printf("Options:\n");
+            printf("  -v    Enable verbose mode\n");
+            printf("  -t    Request a fork token\n");
+            printf("  -h    This cruft\n");
+            printf("Launches the Win32 binary specified in the path. "
+                   "See man page for examples.\n");
+            return EINVAL;
+        }
+        else if (strcmp(Arguments[i], "-t") == 0)
+        {
+            tokenMode = 1;
+        }
     }
 
     //
@@ -67,14 +83,29 @@ main (
     }
 
     //
-    // Write the path to the Win32 binary we want to execute
+    // Check if we're launching a binary, or receiving a token
     //
     if (verboseMode) printf("Connected UNIX socket!\n");
-    size = write(socketFd, Arguments[1], strlen(Arguments[1]));
-    if (size != strlen(Arguments[1]))
+    if (tokenMode)
     {
-        perror("ERROR: Could not write path to domain socket\n");
-        exit(-1);
+        size = write(socketFd, "\0", 1);
+        if (size != 1)
+        {
+            perror("ERROR: Could not send special token packet\n");
+            exit(-1);
+        }
+    }
+    else
+    {
+        //
+        // Write the path to the Win32 binary we want to execute
+        //
+        size = write(socketFd, Arguments[1], strlen(Arguments[1]));
+        if (size != strlen(Arguments[1]))
+        {
+            perror("ERROR: Could not write path to domain socket\n");
+            exit(-1);
+        }
     }
 
     //

@@ -56,4 +56,7 @@ void *dlsym(void *handle, const char *symbol);
 
 int fchmod(int fd, mode_t mode);
 
+pid_t fork(void);
+
+int pause(void);
 

@@ -18,6 +18,8 @@ ServerRoutine (
     ADSS_BUS_CLIENT_CONNECT_SERVER_MSG connectMsg;
     size_t size;
     __uint8_t readBuffer[260];
+    __uint64_t tokenId;
+    pid_t newPid;
 
     //
     // Get the ADSS file descriptor
@@ -118,9 +120,61 @@ ServerRoutine (
         }
 
         //
-        // Now send the actual message
+        // Check if this is a token request
         //
-        write(connectMsg.ServerHandle, readBuffer, size);
+        if (readBuffer[0] == '\0')
+        {
+            //
+            // Pass it on
+            //
+            write(connectMsg.ServerHandle, readBuffer, size);
+
+            //
+            // Now read the reply
+            //
+            size = read(connectMsg.ServerHandle, &tokenId, sizeof(tokenId));
+            if (size <= 0)
+            {
+                close(connectMsg.ServerHandle);
+                close(clientFd);
+                continue;
+            }
+
+            //
+            // Unmarshal the token
+            //
+            error = ioctl(connectMsg.ServerHandle,
+                          IOCTL_ADSS_IPC_CONNECTION_UNMARSHAL_FORK_TOKEN,
+                          &tokenId);
+            if (error != 0)
+            {
+                close(connectMsg.ServerHandle);
+                close(clientFd);
+                continue;
+            }
+
+            //
+            // Now fork a new process!
+            //
+            newPid = fork();
+            if (newPid == 0)
+            {
+                close(connectMsg.ServerHandle);
+                close(clientFd);
+                while (1) pause();
+            }
+        }
+        else
+        {
+            //
+            // Now send the actual message
+            //
+            write(connectMsg.ServerHandle, readBuffer, size);
+        }
+
+        //
+        // Cleanup the connection
+        //
         close(connectMsg.ServerHandle);
         close(clientFd);
     }

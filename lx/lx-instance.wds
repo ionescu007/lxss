@@ -80,7 +80,7 @@ $$ Define helper aliases for easy maintenance of the structure offsets
         .pop /r /q
     }
 
-    $$ Separate this instnace from the next
+    $$ Separate this instance from the next
     .printf "\n"   
 }
 
