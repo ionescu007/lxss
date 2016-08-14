@@ -328,10 +328,15 @@ main (
                 //
                 if ((tokenMode == 1) && (readBuffer[0] == '\0'))
                 {
-                    hToken = CaptureImpersonationToken();
-                    if (hToken == NULL)
+                    //
+                    // Open our own token
+                    //
+                    bRes = OpenProcessToken(GetCurrentProcess(),
+                                            TOKEN_ALL_ACCESS,
+                                            &hToken);
+                    if (bRes == FALSE)
                     {
-                        wprintf(L"Error opening thread token: 0x%08lX\n",
+                        wprintf(L"Error opening process token: 0x%08lX\n",
                                 GetLastError());
                         CloseHandle(clientHandle);
                         continue;

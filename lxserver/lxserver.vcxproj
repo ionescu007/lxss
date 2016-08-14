@@ -39,7 +39,6 @@
     <ClInclude Include="..\inc\nt.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="getsystem.cpp" />
     <ClCompile Include="lxserver.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

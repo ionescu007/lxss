@@ -8,11 +8,16 @@
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalOptions>-Wno-unknown-pragmas -shared -fPIC %(AdditionalOptions)</AdditionalOptions>
-      <Verbose>true</Verbose>
+      <AdditionalOptions>-Wno-unknown-pragmas -shared %(AdditionalOptions)</AdditionalOptions>
+      <Verbose>
+      </Verbose>
       <WarningLevel>EnableAllWarnings</WarningLevel>
-      <CLanguageStandard>gnu11</CLanguageStandard>
-      <CppLanguageStandard>Default</CppLanguageStandard>
+      <CLanguageStandard>
+      </CLanguageStandard>
+      <CppLanguageStandard>
+      </CppLanguageStandard>
+      <PositionIndependentCode>
+      </PositionIndependentCode>
     </ClCompile>
     <Link>
       <LibraryDependencies>pthread;dl</LibraryDependencies>
@@ -32,6 +37,7 @@
       </ThreadSafeStatics>
       <RuntimeTypeInfo>
       </RuntimeTypeInfo>
+      <PositionIndependentCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</PositionIndependentCode>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -60,6 +66,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetExt>.so</TargetExt>
+    <TargetName>$(ProjectName)</TargetName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
