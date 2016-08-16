@@ -6,44 +6,6 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ClCompile>
-      <AdditionalOptions>-Wno-unknown-pragmas -shared %(AdditionalOptions)</AdditionalOptions>
-      <Verbose>
-      </Verbose>
-      <WarningLevel>EnableAllWarnings</WarningLevel>
-      <CLanguageStandard>
-      </CLanguageStandard>
-      <CppLanguageStandard>
-      </CppLanguageStandard>
-      <PositionIndependentCode>
-      </PositionIndependentCode>
-    </ClCompile>
-    <Link>
-      <LibraryDependencies>pthread;dl</LibraryDependencies>
-      <ShowProgress>
-      </ShowProgress>
-      <VerboseOutput>
-      </VerboseOutput>
-      <OutputFile>lxext.so</OutputFile>
-      <AdditionalOptions>-shared %(AdditionalOptions)</AdditionalOptions>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="lxext.c">
-      <CLanguageStandard>gnu11</CLanguageStandard>
-      <CppLanguageStandard>Default</CppLanguageStandard>
-      <ThreadSafeStatics>
-      </ThreadSafeStatics>
-      <RuntimeTypeInfo>
-      </RuntimeTypeInfo>
-      <PositionIndependentCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</PositionIndependentCode>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\inc\adss.h" />
-    <ClInclude Include="..\inc\linux.h" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{f12a920c-f002-45d0-a884-f7192b00124f}</ProjectGuid>
     <Keyword>Linux</Keyword>
@@ -68,6 +30,28 @@
     <TargetExt>.so</TargetExt>
     <TargetName>$(ProjectName)</TargetName>
   </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="lxext.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\inc\adss.h" />
+    <ClInclude Include="..\inc\linux.h" />
+  </ItemGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalOptions>-Wno-unknown-pragmas %(AdditionalOptions)</AdditionalOptions>
+      <WarningLevel>EnableAllWarnings</WarningLevel>
+      <CLanguageStandard>gnu11</CLanguageStandard>
+      <ThreadSafeStatics>
+      </ThreadSafeStatics>
+      <RuntimeTypeInfo>
+      </RuntimeTypeInfo>
+      <PositionIndependentCode>true</PositionIndependentCode>
+    </ClCompile>
+    <Link>
+      <LibraryDependencies>pthread;dl</LibraryDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
 </Project>
