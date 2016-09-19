@@ -4,11 +4,21 @@ $$ Define helper aliases for easy maintenance of the structure offsets
 
 .block
 {
-    $$ Set the root global pointer
-    r @$t0 = lxcore!LxGlobal
-    .printf /D "<b><u>Lx Global Data 0x%P\n\n</u></b>", @$t0
+    $$ Detect RS2 systems (with no symbols for now)
+    .if (dwo(fffff780`00000260) >= 38a4)
+    {
+        $$ Set the root global pointer
+        r @$t0 = lxcore!LxpRoutines - 4 * @$ptrsize
+    }
+    .else
+    {
+        $$ Set the root global pointer
+        r @$t0 = lxcore!LxGlobal
+    }
 
-    $$  NTC: %lx (0x15c1 expected), Size: %lx bytes\n", wo(@$t0), wo(@$t0 + 2)
+    $$ Print information on the LX_GLOBAL_DATA structure
+    .printf /D "<b><u>Lx Global Data 0x%P\n\n</u></b>", @$t0
+    .printf "NTC: %lx (0x15c1 expected), Size: %lx bytes\n", wo(@$t0), wo(@$t0 + 2)
 
     $$ Loop the list of sessions inside of this instance
     r? @$t1 = (nt!_LIST_ENTRY*)(@$t0 + ${G_InstanceListOffset})
