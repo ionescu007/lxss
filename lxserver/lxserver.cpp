@@ -26,7 +26,7 @@ main (
     LARGE_INTEGER byteOffset;
     CHAR readBuffer[MAX_PATH];
     HANDLE hEvent;
-    BOOLEAN verboseMode, tokenMode, extensionMode;
+    BOOLEAN verboseMode, tokenMode, extensionMode, guestMode;
     ULONG i;
     BOOL bRes;
     HANDLE hToken;
@@ -37,13 +37,13 @@ main (
     //
     // Print banner and help if we got invalid arguments
     //
-    wprintf(L"LxServer v1.1.5 -- (c) Copyright 2016 Alex Ionescu\n");
+    wprintf(L"LxServer v1.2.0 -- (c) Copyright 2016 Alex Ionescu\n");
     wprintf(L"Visit http://github.com/ionescu007/lxss for more information.\n\n");
 
     //
     // Check argument settings
     //
-    verboseMode = tokenMode = extensionMode = 0;
+    verboseMode = tokenMode = extensionMode = guestMode = 0;
     for (i = 0; i < ArgumentCount; i++)
     {
         if (strcmp(Arguments[i], "-v") == 0)
@@ -52,8 +52,9 @@ main (
         }
         else if (strcmp(Arguments[i], "-h") == 0)
         {
-            wprintf(L"USAGE: LxServer [-v | -t | -e]\n");
+            wprintf(L"USAGE: LxServer [-v | -t | -e | -g]\n");
             wprintf(L"-e    Extension mode (don't enable ADSS Bus access)\n");
+            wprintf(L"-g    Guest mode (use unnamed IPC server -- RS2 only!)\n");
             wprintf(L"-t    Token donation mode (send a token for fork())\n");
             wprintf(L"-v    Verbose mode\n");
             wprintf(L"-h    Display help\n");
@@ -67,12 +68,17 @@ main (
         {
             extensionMode = 1;
         }
+        else if (strcmp(Arguments[i], "-g") == 0)
+        {
+            guestMode = 1;
+        }
     }
 
     //
     // Check if extension mode is NOT used (i..e: standalone client on Lx side)
+    // or if we're using guest mode (launching the client ourselves).
     //
-    if (extensionMode == 0)
+    if ((extensionMode == 0) || (guestMode == 1))
     {
         //
         // Configure parameters for registry value access

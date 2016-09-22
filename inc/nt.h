@@ -2,6 +2,8 @@
 
 #include <winternl.h>
 
+static const PULONG g_BuildNumber = (PULONG)0x7ffe0260;
+
 extern "C"
 NTSTATUS
 NtWriteFile (

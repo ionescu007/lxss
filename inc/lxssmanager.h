@@ -53,6 +53,7 @@ typedef struct _LXSS_CONSOLE_DATA
     USHORT Height;
 } LXSS_CONSOLE_DATA, *PLXSS_CONSOLE_DATA;
 
+#define LX_CREATE_PROCESS_PRINT_UPDATE_INFO_FLAG        0x01
 typedef HRESULT
 (STDMETHODCALLTYPE *PLX_INSTANCE_CREATE_LX_PROCESS) (
     _In_ struct _LX_INSTANCE** This,
@@ -67,6 +68,23 @@ typedef HRESULT
     _In_ PLXSS_CONSOLE_DATA ConsoleData,
     _In_ ULONG Uid,
     _Out_ PULONG ProcessHandle
+    );
+
+typedef HRESULT
+(STDMETHODCALLTYPE *PLX_INSTANCE_CREATE_LX_PROCESS_V2) (
+    _In_ struct _LX_INSTANCE** This,
+    _In_ PCCH CommandLine,
+    _In_ ULONG ArgumentCount,
+    _In_ PCCH* Arguments,
+    _In_ ULONG EnvironmentCount,
+    _In_ PCCH* Environment,
+    _In_ PCCH CurrentDirectory,
+    _In_ ULONG Flags,
+    _In_ PLXSS_STD_HANDLES StdHandles,
+    _In_ PLXSS_CONSOLE_DATA ConsoleData,
+    _In_ ULONG Uid,
+    _Out_ PULONG ProcessHandle,
+    _Outptr_opt_ PULONG ServerHandle
     );
 
 typedef HRESULT
@@ -94,3 +112,22 @@ typedef struct _LX_INSTANCE
     PVOID StopSelf;
     PVOID GetSuspendState;
 } LX_INSTANCE, *PLX_INSTANCE;
+
+typedef struct _LX_INSTANCE_V2
+{
+    PVOID QueryInterface;
+    PVOID AddRef;
+    PVOID Release;
+    PVOID GetId;
+    PVOID QueryState;
+    PVOID SetState;
+    PLX_INSTANCE_CREATE_LX_PROCESS_V2 CreateLxProcess;
+    PLX_INSTANCE_REGISTER_ADSS_BUS_SERVER RegisterAdssBusServer;
+    PVOID ConnectAdssBusServer;
+    PVOID Destroy;
+    PVOID GetState;
+    PVOID Start;
+    PVOID Stop;
+    PVOID GetSuspendState;
+    PVOID StopSelf;
+} LX_INSTANCE_V2, *PLX_INSTANCE_V2;

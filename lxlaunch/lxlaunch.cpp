@@ -27,12 +27,12 @@ main (
     HANDLE inPipe;
     PCHAR currentDirectory = "/";
     PCCH cmdLine;
-    ULONG processHandle;
+    ULONG processHandle, serverHandle;
 
     //
     // Print banner and help if we got invalid arguments
     //
-    wprintf(L"LxLaunch v1.0.0 -- (c) Copyright 2016 Alex Ionescu\n");
+    wprintf(L"LxLaunch v1.1.0 -- (c) Copyright 2016 Alex Ionescu\n");
     wprintf(L"Visit http://github.com/ionescu007/lxss for more information.\n\n");
     if (ArgumentCount > 2)
     {
@@ -134,20 +134,51 @@ main (
     consoleData.OutputHandle = HandleToUlong(GetStdHandle(STD_OUTPUT_HANDLE));
 
     //
-    // Now launch the process
+    // Check if this is RS2
     //
-    hr = (*iLxInstance)->CreateLxProcess(iLxInstance,
-                                         cmdLine,
-                                         1,
-                                         &cmdLine,
-                                         4,
-                                         LxssDefaultEnvironmentStrings,
-                                         currentDirectory,
-                                         1,
-                                         &stdHandles,
-                                         &consoleData,
-                                         0,
-                                         &processHandle);
+    if (*g_BuildNumber >= 15000)
+    {
+        //
+        // Use the new inteface which now accepts an unnamed server IPC handle
+        //
+        hr = ((PLX_INSTANCE_V2)*iLxInstance)->CreateLxProcess(
+            iLxInstance,
+            cmdLine,
+            RTL_NUMBER_OF(cmdLine),
+            &cmdLine,
+            RTL_NUMBER_OF(LxssDefaultEnvironmentStrings),
+            LxssDefaultEnvironmentStrings,
+            currentDirectory,
+            LX_CREATE_PROCESS_PRINT_UPDATE_INFO_FLAG,
+            &stdHandles,
+            &consoleData,
+            0,
+            &processHandle,
+            &serverHandle);
+    }
+    else
+    {
+        //
+        // Use the old interface
+        //
+        hr = (*iLxInstance)->CreateLxProcess(
+            iLxInstance,
+            cmdLine,
+            RTL_NUMBER_OF(cmdLine),
+            &cmdLine,
+            RTL_NUMBER_OF(LxssDefaultEnvironmentStrings),
+            LxssDefaultEnvironmentStrings,
+            currentDirectory,
+            LX_CREATE_PROCESS_PRINT_UPDATE_INFO_FLAG,
+            &stdHandles,
+            &consoleData,
+            0,
+            &processHandle);
+    }
+
+    //
+    // Check the result
+    //
     if (!SUCCEEDED(hr))
     {
         wprintf(L"Failed to launch %S\n", cmdLine);
