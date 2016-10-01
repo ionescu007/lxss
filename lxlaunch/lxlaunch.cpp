@@ -5,6 +5,14 @@
 #include "..\inc\lxssmanager.h"
 #include "..\inc\adss.h"
 
+#ifndef DISABLE_NEWLINE_AUTO_RETURN
+#define DISABLE_NEWLINE_AUTO_RETURN 0x08
+#endif
+
+#ifndef ENABLE_VIRTUAL_TERMINAL_INPUT
+#define ENABLE_VIRTUAL_TERMINAL_INPUT 0x200
+#endif
+
 PCCH LxssDefaultEnvironmentStrings[4] =
 {
     "HOSTTYPE=x86_64",
@@ -30,11 +38,29 @@ main (
     PCCH* cmdLine;
     ULONG cmdCount;
     ULONG processHandle, serverHandle;
+    ULONG exitCode;
+    HANDLE inHandle, outHandle;
+    ULONG oldInMode, oldOutMode;
+    UINT oldInCp, oldOutCp;
+    CONSOLE_SCREEN_BUFFER_INFO screenInfo;
+
+    //
+    // Reset all variables
+    //
+    processHandle = NULL;
+    serverHandle = NULL;
+    inPipe = NULL;
+    inHandle = NULL;
+    outHandle = NULL;
+    oldInCp = 0;
+    oldOutCp = 0;
+    oldInMode = 0;
+    oldOutMode = 0;
 
     //
     // Print banner and help at all times
     //
-    wprintf(L"LxLaunch v1.1.5 -- (c) Copyright 2016 Alex Ionescu\n");
+    wprintf(L"LxLaunch v1.1.8 -- (c) Copyright 2016 Alex Ionescu\n");
     wprintf(L"Visit http://github.com/ionescu007/lxss for more information.\n\n");
     wprintf(L"USAGE: LxLaunch [<path to ELF binary>]\n");
     wprintf(L"       Will launch /usr/bin/python if path not present\n\n");
@@ -132,12 +158,82 @@ main (
     }
 
     //
-    // Standard handles will be console handles. Console will be 80x25 with an
-    // input/control pipe and STDOUT as the output.
+    // Standard handles will be console handles
     //
     RtlZeroMemory(&stdHandles, sizeof(stdHandles));
-    consoleData.Width = 80;
-    consoleData.Height = 25;
+
+    //
+    // Get, and validate, the output handle
+    //
+    outHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (GetFileType(outHandle) != FILE_TYPE_CHAR)
+    {
+        //
+        // This means we got a non-console handle
+        //
+        assert(outHandle > 0);
+        CloseHandle(outHandle);
+        wprintf(L"Output handle is not console\n");
+        exitCode = GetLastError();
+        goto Quickie;
+    }
+
+    //
+    // Get, and validate, the output handle
+    //
+    inHandle = GetStdHandle(STD_INPUT_HANDLE);
+    if (GetFileType(inHandle) != FILE_TYPE_CHAR)
+    {
+        assert(inHandle > 0);
+        CloseHandle(inHandle);
+        wprintf(L"Input handle is not console\n");
+        exitCode = GetLastError();
+        goto Quickie;
+    }
+
+    //
+    // Switch input to UTF-8
+    //
+    oldInCp = GetConsoleCP();
+    SetConsoleCP(CP_UTF8);
+
+    //
+    // Switch output to UTF-8
+    //
+    oldOutCp = GetConsoleOutputCP();
+    SetConsoleOutputCP(CP_UTF8);
+
+    //
+    // Switch to VT-100 Input Console
+    //
+    GetConsoleMode(inHandle, &oldInMode);
+    SetConsoleMode(inHandle, oldInMode &
+                             ~(ENABLE_INSERT_MODE |
+                               ENABLE_ECHO_INPUT |
+                               ENABLE_LINE_INPUT |
+                               ENABLE_PROCESSED_INPUT) |
+                             (ENABLE_VIRTUAL_TERMINAL_INPUT |
+                              ENABLE_WINDOW_INPUT));
+
+    //
+    // Switch to VT-100 Output Console
+    //
+    GetConsoleMode(outHandle, &oldOutMode);
+    SetConsoleMode(outHandle, oldOutMode |
+                                DISABLE_NEWLINE_AUTO_RETURN |
+                                ENABLE_VIRTUAL_TERMINAL_PROCESSING |
+                                ENABLE_PROCESSED_OUTPUT);
+
+    //
+    // Set the console size to the current window size
+    //
+    GetConsoleScreenBufferInfo(outHandle, &screenInfo);
+    consoleData.Width = screenInfo.srWindow.Right - screenInfo.srWindow.Left + 1;
+    consoleData.Height = screenInfo.srWindow.Bottom - screenInfo.srWindow.Top + 1;
+
+    //
+    // Set the handles
+    //
     consoleData.InputHandle = HandleToUlong(inPipe);
     consoleData.ControlHandle = HandleToUlong(inPipe);
     consoleData.OutputHandle = HandleToUlong(GetStdHandle(STD_OUTPUT_HANDLE));
@@ -191,13 +287,42 @@ main (
     if (!SUCCEEDED(hr))
     {
         wprintf(L"Failed to launch %S\n", imageFileName);
-        return GetLastError();
+        exitCode = GetLastError();
+        goto Quickie;
     }
 
     //
     // Wait for Linux process to exit
     //
     WaitForSingleObject(UlongToHandle(processHandle), INFINITE);
-    return 0;
+    GetExitCodeProcess(UlongToHandle(processHandle), &exitCode);
+
+Quickie:
+    //
+    // Cleanup handles, restore console settings
+    //
+    if (inHandle != NULL)
+    {
+        SetConsoleCP(oldInCp);
+        SetConsoleMode(inHandle, oldInMode);
+    }
+    if (outHandle != NULL)
+    {
+        SetConsoleOutputCP(oldOutCp);
+        SetConsoleMode(outHandle, oldOutMode);
+    }
+    if (processHandle != NULL)
+    {
+        CloseHandle(UlongToHandle(processHandle));
+    }
+    if (serverHandle != NULL)
+    {
+        CloseHandle(UlongToHandle(serverHandle));
+    }
+    if (inPipe != NULL)
+    {
+        CloseHandle(inPipe);
+    }
+    return exitCode;
 }
 
