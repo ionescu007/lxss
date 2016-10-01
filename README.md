@@ -2,9 +2,11 @@
 Fun with the Windows Subsystem for Linux (WSL/LXSS)
 
 ![Screenshot](lxclient.PNG)
+![Screenshot](lxlaunch.PNG)
 
 ## LxLaunch
-LxLaunch is a simple launcher which either launches /usr/bin/python if no parameters are given to it, or launches the given ELF executable if an argument is entered. The binary launches as a child of the init daemon, under the current/default Lx instance.
+LxLaunch is a simple launcher which either launches /usr/bin/python if no parameters are given to it, or launches the given ELF executable if an argument is entered. The binary launches as a child of the init daemon, under the current/default Lx instance. Additional command-line arguments can be entered for the ELF process, and further command-line arguments can be nested in quotes if the ELF binary launches its own sub-binary with additional command-line options. For example:
+```lxlaunch.exe /bin/bash -c "ls -al"```
 
 ## LxServer
 LxServer is a simple Win32 (x64) server that waits for connections over the ADSS Bus from a compatible LXSS client (such as lxclient), and launches (WinExec) any input received as long as it fits within MAX_PATH. If needed, it configures the registry to enable ADSS Bus usage from root LXSS binaries other than the init daemon (see presentation slides), after which an initial reboot will be required. Launch it with -v for verbose information.
