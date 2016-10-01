@@ -5,7 +5,7 @@
 #include "..\inc\lxssmanager.h"
 #include "..\inc\adss.h"
 
-const CHAR* LxssDefaultEnvironmentStrings[4] =
+PCCH LxssDefaultEnvironmentStrings[4] =
 {
     "HOSTTYPE=x86_64",
     "TERM=xterm",
@@ -26,28 +26,30 @@ main (
     LXSS_STD_HANDLES stdHandles;
     HANDLE inPipe;
     PCHAR currentDirectory = "/";
-    PCCH cmdLine;
+    PCCH imageFileName;
+    PCCH* cmdLine;
+    ULONG cmdCount;
     ULONG processHandle, serverHandle;
 
     //
     // Print banner and help if we got invalid arguments
     //
-    wprintf(L"LxLaunch v1.1.0 -- (c) Copyright 2016 Alex Ionescu\n");
+    wprintf(L"LxLaunch v1.1.5 -- (c) Copyright 2016 Alex Ionescu\n");
     wprintf(L"Visit http://github.com/ionescu007/lxss for more information.\n\n");
-    if (ArgumentCount > 2)
-    {
-        wprintf(L"USAGE: LxLaunch [<path to ELF binary>]\n");
-        wprintf(L"       Will launch /usr/bin/python if path not present\n");
-        return -1;
-    }
+    wprintf(L"USAGE: LxLaunch [<path to ELF binary>]\n");
+    wprintf(L"       Will launch /usr/bin/python if path not present\n\n");
 
     if (ArgumentCount == 1)
     {
-        cmdLine = "/usr/bin/python";
+        imageFileName = "/usr/bin/python";
+        cmdLine = &imageFileName;
+        cmdCount = 1;
     }
     else
     {
-        cmdLine = Arguments[1];
+        imageFileName = Arguments[1];
+        cmdLine = &Arguments[1];
+        cmdCount = ArgumentCount - 1;
     }
 
     //
@@ -136,16 +138,16 @@ main (
     //
     // Check if this is RS2
     //
-    if (*g_BuildNumber >= 15000)
+    if (*g_BuildNumber >= 14500)
     {
         //
         // Use the new inteface which now accepts an unnamed server IPC handle
         //
         hr = ((PLX_INSTANCE_V2)*iLxInstance)->CreateLxProcess(
             iLxInstance,
+            imageFileName,
+            cmdCount,
             cmdLine,
-            RTL_NUMBER_OF(cmdLine),
-            &cmdLine,
             RTL_NUMBER_OF(LxssDefaultEnvironmentStrings),
             LxssDefaultEnvironmentStrings,
             currentDirectory,
@@ -163,9 +165,9 @@ main (
         //
         hr = (*iLxInstance)->CreateLxProcess(
             iLxInstance,
+            imageFileName,
+            cmdCount,
             cmdLine,
-            RTL_NUMBER_OF(cmdLine),
-            &cmdLine,
             RTL_NUMBER_OF(LxssDefaultEnvironmentStrings),
             LxssDefaultEnvironmentStrings,
             currentDirectory,
@@ -181,7 +183,7 @@ main (
     //
     if (!SUCCEEDED(hr))
     {
-        wprintf(L"Failed to launch %S\n", cmdLine);
+        wprintf(L"Failed to launch %S\n", imageFileName);
         return GetLastError();
     }
 

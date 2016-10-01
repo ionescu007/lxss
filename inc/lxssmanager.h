@@ -73,7 +73,7 @@ typedef HRESULT
 typedef HRESULT
 (STDMETHODCALLTYPE *PLX_INSTANCE_CREATE_LX_PROCESS_V2) (
     _In_ struct _LX_INSTANCE** This,
-    _In_ PCCH CommandLine,
+    _In_ PCCH ImageName,
     _In_ ULONG ArgumentCount,
     _In_ PCCH* Arguments,
     _In_ ULONG EnvironmentCount,
