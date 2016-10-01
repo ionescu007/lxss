@@ -32,13 +32,16 @@ main (
     ULONG processHandle, serverHandle;
 
     //
-    // Print banner and help if we got invalid arguments
+    // Print banner and help at all times
     //
     wprintf(L"LxLaunch v1.1.5 -- (c) Copyright 2016 Alex Ionescu\n");
     wprintf(L"Visit http://github.com/ionescu007/lxss for more information.\n\n");
     wprintf(L"USAGE: LxLaunch [<path to ELF binary>]\n");
     wprintf(L"       Will launch /usr/bin/python if path not present\n\n");
 
+    //
+    // If no arguments are passed in, just launch python as a proof-of-concept
+    //
     if (ArgumentCount == 1)
     {
         imageFileName = "/usr/bin/python";
@@ -47,6 +50,10 @@ main (
     }
     else
     {
+        //
+        // Otherwise, launch the image in argument 1, and treat all the other
+        // arguments as input for this image
+        //
         imageFileName = Arguments[1];
         cmdLine = &Arguments[1];
         cmdCount = ArgumentCount - 1;
@@ -141,7 +148,7 @@ main (
     if (*g_BuildNumber >= 14500)
     {
         //
-        // Use the new inteface which now accepts an unnamed server IPC handle
+        // Use the new interface which now accepts an unnamed server IPC handle
         //
         hr = ((PLX_INSTANCE_V2)*iLxInstance)->CreateLxProcess(
             iLxInstance,
