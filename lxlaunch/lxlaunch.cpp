@@ -39,10 +39,13 @@ main (
     ULONG cmdCount;
     ULONG processHandle, serverHandle;
     ULONG exitCode;
-    HANDLE inHandle, outHandle;
+    HANDLE inHandle, outHandle, remoteHandle;
     ULONG oldInMode, oldOutMode;
     UINT oldInCp, oldOutCp;
     CONSOLE_SCREEN_BUFFER_INFO screenInfo;
+    HANDLE waitArray[2];
+    INPUT_RECORD record;
+    ULONG eventsRead, bytesWritten;
 
     //
     // Reset all variables
@@ -52,6 +55,7 @@ main (
     inPipe = NULL;
     inHandle = NULL;
     outHandle = NULL;
+    remoteHandle = NULL;
     oldInCp = 0;
     oldOutCp = 0;
     oldInMode = 0;
@@ -60,7 +64,7 @@ main (
     //
     // Print banner and help at all times
     //
-    wprintf(L"LxLaunch v1.1.8 -- (c) Copyright 2016 Alex Ionescu\n");
+    wprintf(L"LxLaunch v1.2.0 -- (c) Copyright 2016 Alex Ionescu\n");
     wprintf(L"Visit http://github.com/ionescu007/lxss for more information.\n\n");
     wprintf(L"USAGE: LxLaunch [<path to ELF binary>]\n");
     wprintf(L"       Will launch /usr/bin/python if path not present\n\n");
@@ -154,7 +158,25 @@ main (
     if (inPipe == NULL)
     {
         wprintf(L"Failed to create named pipe\n");
-        return GetLastError();
+        exitCode = GetLastError();
+        goto Quickie;
+    }
+
+    //
+    // Connect the Linux end to the Win32 end
+    //
+    remoteHandle = CreateFile(L"\\\\.\\pipe\\InPipe",
+                              GENERIC_READ | GENERIC_WRITE,
+                              0, 
+                              0,
+                              FILE_OPEN_IF,
+                              FILE_ATTRIBUTE_NORMAL,
+                              NULL);
+    if (remoteHandle == INVALID_HANDLE_VALUE)
+    {
+        wprintf(L"Failed to create remote end of named pipe\n");
+        exitCode = GetLastError();
+        goto Quickie;
     }
 
     //
@@ -234,7 +256,7 @@ main (
     //
     // Set the handles
     //
-    consoleData.InputHandle = HandleToUlong(inPipe);
+    consoleData.InputHandle = HandleToUlong(remoteHandle);
     consoleData.ControlHandle = HandleToUlong(inPipe);
     consoleData.OutputHandle = HandleToUlong(GetStdHandle(STD_OUTPUT_HANDLE));
 
@@ -292,9 +314,36 @@ main (
     }
 
     //
-    // Wait for Linux process to exit
+    // Wait for Linux process to exit, or for console input
     //
-    WaitForSingleObject(UlongToHandle(processHandle), INFINITE);
+    waitArray[0] = UlongToHandle(processHandle);
+    waitArray[1] = GetStdHandle(STD_INPUT_HANDLE);
+    while (WaitForMultipleObjects(RTL_NUMBER_OF(waitArray),
+                                  waitArray,
+                                  FALSE,
+                                  INFINITE))
+    {
+        //
+        // Read the console input -- we only care about key pressses
+        //
+        ReadConsoleInput(waitArray[1], &record, 1, &eventsRead);
+        if ((record.EventType == KEY_EVENT) &&
+            (record.Event.KeyEvent.bKeyDown != FALSE))
+        {
+            //
+            // Write into the Linux input pipe the character
+            //
+            WriteFile(inPipe,
+                      &record.Event.KeyEvent.uChar.AsciiChar,
+                      1, 
+                      &bytesWritten,
+                      NULL);
+        }
+    }
+
+    //
+    // Process died, get its exit code
+    //
     GetExitCodeProcess(UlongToHandle(processHandle), &exitCode);
 
 Quickie:
@@ -322,6 +371,10 @@ Quickie:
     if (inPipe != NULL)
     {
         CloseHandle(inPipe);
+    }
+    if (remoteHandle != NULL)
+    {
+        CloseHandle(remoteHandle);
     }
     return exitCode;
 }
