@@ -1,5 +1,10 @@
-# lxss
-Fun with the Windows Subsystem for Linux (WSL/LXSS)
+# lxss -- Fun with the Windows Subsystem for Linux (WSL/LXSS)
+
+This repository is dedicated to research, code, and various studies of the Windows Subsystem for Linux, also known as Bash on Ubuntu on Windows, and LXSS. It contains a variety of Proof-of-Concept Win32 and Linux binaries, both in user-mode and kernel-mode, in order to interact with the various subsystem pieces. Namely, it demonstrates usage of the Win32 COM interface between Bash.exe and LxssManager, as well as of the ADSS Bus interface between init and LxssManager. For Redstone 2, it shows off some of the new interoperability features of the subsystem.
+
+The PDF titled "The Linux Kernel hidden inside Windows 10" represents the BlackHat 2016 slides from my presentation, and a video is now available on Youtube at: https://www.youtube.com/watch?v=ovz0gjuIOpI
+
+If you would ike to know more about my research or work, I invite you check out my blog at http://www.alex-ionescu.com as well as my training & consulting company at http://www.windows-internals.com
 
 ![Screenshot](lxclient.PNG)
 ![Screenshot](lxlaunch.PNG)
