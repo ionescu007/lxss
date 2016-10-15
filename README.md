@@ -4,7 +4,9 @@ This repository is dedicated to research, code, and various studies of the Windo
 
 The PDF titled "The Linux Kernel hidden inside Windows 10" represents the BlackHat 2016 slides from my presentation, and a video is now available on Youtube at: https://www.youtube.com/watch?v=ovz0gjuIOpI
 
-If you would like to know more about my research or work, I invite you check out my blog at http://www.alex-ionescu.com as well as my training & consulting company at http://www.windows-internals.com
+If you would like to know more about my research or work, I invite you check out my blog at http://www.alex-ionescu.com as well as my training & consulting company (Winsider Seminars & Solutions Inc.,) at http://www.windows-internals.com.
+
+## Screenshots
 
 ![Screenshot](lxclient.PNG)
 ![Screenshot](lxlaunch.PNG)
