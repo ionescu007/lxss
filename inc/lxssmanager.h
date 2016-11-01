@@ -44,6 +44,11 @@ typedef struct _LXSS_STD_HANDLES
     LXSS_STD_HANDLE StdErr;
 } LXSS_STD_HANDLES, *PLXSS_STD_HANDLES;
 
+typedef struct _LXSS_CONSOLE_DATA_V2
+{
+    ULONG ConsoleHandle;
+} LXSS_CONSOLE_DATA_V2, *PLXSS_CONSOLE_DATA_V2;
+
 typedef struct _LXSS_CONSOLE_DATA
 {
     ULONG InputHandle;
@@ -81,7 +86,7 @@ typedef HRESULT
     _In_ PCCH CurrentDirectory,
     _In_ ULONG Flags,
     _In_ PLXSS_STD_HANDLES StdHandles,
-    _In_ PLXSS_CONSOLE_DATA ConsoleData,
+    _In_ PLXSS_CONSOLE_DATA_V2 ConsoleData,
     _In_ ULONG Uid,
     _Out_ PULONG ProcessHandle,
     _Outptr_opt_ PULONG ServerHandle

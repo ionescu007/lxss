@@ -30,7 +30,11 @@ main (
     HRESULT hr;
     PLX_SESSION* iLxSession;
     PLX_INSTANCE* iLxInstance;
-    LXSS_CONSOLE_DATA consoleData;
+    union
+    {
+        LXSS_CONSOLE_DATA consoleData;
+        LXSS_CONSOLE_DATA_V2 consoleData2;
+    };
     LXSS_STD_HANDLES stdHandles;
     HANDLE inPipe;
     PCHAR currentDirectory = "/";
@@ -45,6 +49,7 @@ main (
     CONSOLE_SCREEN_BUFFER_INFO screenInfo;
     HANDLE waitArray[2];
     INPUT_RECORD record;
+    BOOLEAN useRs2Logic;
     ULONG eventsRead, bytesWritten;
 
     //
@@ -145,38 +150,45 @@ main (
     }
 
     //
-    // Create the console in/control pipe (not used)
+    // Check if this is RS2
     //
-    inPipe = CreateNamedPipe(L"\\\\.\\pipe\\InPipe",
-                             FILE_FLAG_OVERLAPPED | PIPE_ACCESS_DUPLEX,
-                             PIPE_REJECT_REMOTE_CLIENTS,
-                             1,
-                             4096,
-                             4096,
-                             0,
-                             NULL);
-    if (inPipe == NULL)
+    useRs2Logic = (*g_BuildNumber >= 14950);
+    if (useRs2Logic != FALSE)
     {
-        wprintf(L"Failed to create named pipe\n");
-        exitCode = GetLastError();
-        goto Quickie;
-    }
+        //
+        // Create the console in pipe, which is needed on RS1
+        //
+        inPipe = CreateNamedPipe(L"\\\\.\\pipe\\InPipe",
+                                 FILE_FLAG_OVERLAPPED | PIPE_ACCESS_DUPLEX,
+                                 PIPE_REJECT_REMOTE_CLIENTS,
+                                 1,
+                                 4096,
+                                 4096,
+                                 0,
+                                 NULL);
+        if (inPipe == NULL)
+        {
+            wprintf(L"Failed to create named pipe\n");
+            exitCode = GetLastError();
+            goto Quickie;
+        }
 
-    //
-    // Connect the Linux end to the Win32 end
-    //
-    remoteHandle = CreateFile(L"\\\\.\\pipe\\InPipe",
-                              GENERIC_READ | GENERIC_WRITE,
-                              0, 
-                              0,
-                              FILE_OPEN_IF,
-                              FILE_ATTRIBUTE_NORMAL,
-                              NULL);
-    if (remoteHandle == INVALID_HANDLE_VALUE)
-    {
-        wprintf(L"Failed to create remote end of named pipe\n");
-        exitCode = GetLastError();
-        goto Quickie;
+        //
+        // Connect the Linux end to the Win32 end, needed for RS1 console
+        //
+        remoteHandle = CreateFile(L"\\\\.\\pipe\\InPipe",
+                                  GENERIC_READ | GENERIC_WRITE,
+                                  0, 
+                                  0,
+                                  FILE_OPEN_IF,
+                                  FILE_ATTRIBUTE_NORMAL,
+                                  NULL);
+        if (remoteHandle == INVALID_HANDLE_VALUE)
+        {
+            wprintf(L"Failed to create remote end of named pipe\n");
+            exitCode = GetLastError();
+            goto Quickie;
+        }
     }
 
     //
@@ -247,24 +259,18 @@ main (
                                 ENABLE_PROCESSED_OUTPUT);
 
     //
-    // Set the console size to the current window size
-    //
-    GetConsoleScreenBufferInfo(outHandle, &screenInfo);
-    consoleData.Width = screenInfo.srWindow.Right - screenInfo.srWindow.Left + 1;
-    consoleData.Height = screenInfo.srWindow.Bottom - screenInfo.srWindow.Top + 1;
-
-    //
-    // Set the handles
-    //
-    consoleData.InputHandle = HandleToUlong(remoteHandle);
-    consoleData.ControlHandle = HandleToUlong(inPipe);
-    consoleData.OutputHandle = HandleToUlong(GetStdHandle(STD_OUTPUT_HANDLE));
-
-    //
     // Check if this is RS2
     //
-    if (*g_BuildNumber >= 14500)
+    if (useRs2Logic != FALSE)
     {
+        //
+        // Grab the console handle -- RS2 does the console handling for free
+        //
+        consoleData2.ConsoleHandle = PtrToUlong(NtCurrentTeb()->
+                                                ProcessEnvironmentBlock->
+                                                ProcessParameters->
+                                                Reserved2[0]);
+
         //
         // Use the new interface which now accepts an unnamed server IPC handle
         //
@@ -278,13 +284,27 @@ main (
             currentDirectory,
             LX_CREATE_PROCESS_PRINT_UPDATE_INFO_FLAG,
             &stdHandles,
-            &consoleData,
+            &consoleData2,
             0,
             &processHandle,
             &serverHandle);
     }
     else
     {
+        //
+        // Set the console size to the current window size
+        //
+        GetConsoleScreenBufferInfo(outHandle, &screenInfo);
+        consoleData.Width = screenInfo.srWindow.Right - screenInfo.srWindow.Left + 1;
+        consoleData.Height = screenInfo.srWindow.Bottom - screenInfo.srWindow.Top + 1;
+
+        //
+        // Set the handles
+        //
+        consoleData.InputHandle = HandleToUlong(remoteHandle);
+        consoleData.ControlHandle = HandleToUlong(inPipe);
+        consoleData.OutputHandle = HandleToUlong(GetStdHandle(STD_OUTPUT_HANDLE));
+
         //
         // Use the old interface
         //
@@ -318,14 +338,16 @@ main (
     //
     waitArray[0] = UlongToHandle(processHandle);
     waitArray[1] = GetStdHandle(STD_INPUT_HANDLE);
-    while (WaitForMultipleObjects(RTL_NUMBER_OF(waitArray),
+    while (WaitForMultipleObjects(useRs2Logic ? 1 : 2,
                                   waitArray,
                                   FALSE,
                                   INFINITE))
     {
         //
         // Read the console input -- we only care about key pressses
+        // NOTE: This code path is only active on RS1
         //
+        assert(useRs2Logic == FALSE);
         ReadConsoleInput(waitArray[1], &record, 1, &eventsRead);
         if ((record.EventType == KEY_EVENT) &&
             (record.Event.KeyEvent.bKeyDown != FALSE))
