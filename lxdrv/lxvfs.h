@@ -111,6 +111,7 @@ typedef struct _VFS_MINOR_DEVICE_CALLBACKS
 typedef
 INT
 (VFS_FILE_IOCTL_CALLBACK) (
+    _In_ PVOID CallContext,
     _In_ PVOID FileContext,
     _In_ ULONG Ioctl,
     _Inout_ PVOID Buffer

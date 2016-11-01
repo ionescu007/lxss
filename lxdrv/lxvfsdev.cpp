@@ -57,6 +57,7 @@ PVFS_MINOR_DEVICE VfsMyDevice;
 
 INT
 VfsMyIoctl (
+    _In_ PVOID CallContext,
     _In_ PVOID File,
     _In_ ULONG Ioctl,
     _Inout_ PVOID Buffer
@@ -68,6 +69,7 @@ VfsMyIoctl (
     //
     // Make sure this is really our file
     //
+    UNREFERENCED_PARAMETER(CallContext);
     fileContext = reinterpret_cast<PMY_FILE_CONTEXT>(File);
     NT_ASSERT(fileContext->AssociatedDevice == VfsMyDevice);
 

@@ -80,7 +80,6 @@ LxDrvGetRoutines (
         (g_VfsDeviceMinorDereference == NULL) ||
         (g_LxpUtilTranslateStatus == NULL))
     {
-        DbgPrintEx(77, 0, "one routine failed\n");
         status = STATUS_NOT_FOUND;
         goto Quickie;
     }
