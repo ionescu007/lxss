@@ -19,7 +19,7 @@ $$ Define helper aliases for easy maintenance of the structure offsets
 .block { aS I_MemoryFlagsOffset (${I_VfsContextOffset}+@$ptrsize)                                 }
 .if (dwo(fffff780`00000260) >= 38a4)
 {
-.block { aS I_LastPidOffset     (${I_MemoryFlagsOffset}+5*@$ptrsize)                              }
+.block { aS I_LastPidOffset     (${I_MemoryFlagsOffset}+8*@$ptrsize)                              }
 }
 .else
 {

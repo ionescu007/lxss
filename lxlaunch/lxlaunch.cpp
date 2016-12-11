@@ -51,6 +51,7 @@ main (
     INPUT_RECORD record;
     BOOLEAN useRs2Logic;
     ULONG eventsRead, bytesWritten;
+    ADSS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL_MSG waitForSignalMsg;
 
     //
     // Reset all variables
@@ -69,7 +70,7 @@ main (
     //
     // Print banner and help at all times
     //
-    wprintf(L"LxLaunch v1.2.0 -- (c) Copyright 2016 Alex Ionescu\n");
+    wprintf(L"LxLaunch v1.3.0 -- (c) Copyright 2016 Alex Ionescu\n");
     wprintf(L"Visit http://github.com/ionescu007/lxss for more information.\n\n");
     wprintf(L"USAGE: LxLaunch [<path to ELF binary>]\n");
     wprintf(L"       Will launch /usr/bin/python if path not present\n\n");
@@ -153,7 +154,7 @@ main (
     // Check if this is RS2
     //
     useRs2Logic = (*g_BuildNumber >= 14950);
-    if (useRs2Logic != FALSE)
+    if (useRs2Logic == FALSE)
     {
         //
         // Create the console in pipe, which is needed on RS1
@@ -275,12 +276,11 @@ main (
         // Use the new interface which now accepts an unnamed server IPC handle
         //
         hr = ((PLX_INSTANCE_V2)*iLxInstance)->CreateLxProcess(
-            iLxInstance,
+            (PLX_INSTANCE_V2*)iLxInstance,
             imageFileName,
             cmdCount,
             cmdLine,
-            RTL_NUMBER_OF(LxssDefaultEnvironmentStrings),
-            LxssDefaultEnvironmentStrings,
+            "C:\\windows\\system32;c:\\windows",
             currentDirectory,
             LX_CREATE_PROCESS_PRINT_UPDATE_INFO_FLAG,
             &stdHandles,
@@ -334,39 +334,69 @@ main (
     }
 
     //
-    // Wait for Linux process to exit, or for console input
+    // On RS2, we don't get back a true NT process handle
     //
-    waitArray[0] = UlongToHandle(processHandle);
-    waitArray[1] = GetStdHandle(STD_INPUT_HANDLE);
-    while (WaitForMultipleObjects(useRs2Logic ? 1 : 2,
-                                  waitArray,
-                                  FALSE,
-                                  INFINITE))
+    if (useRs2Logic != FALSE)
     {
         //
-        // Read the console input -- we only care about key pressses
-        // NOTE: This code path is only active on RS1
+        // Use the IOCTL to wait on the process to terminate
         //
-        assert(useRs2Logic == FALSE);
-        ReadConsoleInput(waitArray[1], &record, 1, &eventsRead);
-        if ((record.EventType == KEY_EVENT) &&
-            (record.Event.KeyEvent.bKeyDown != FALSE))
+        hr = DeviceIoControl(UlongToHandle(processHandle),
+                             IOCTL_ADSS_LX_PROCESS_HANDLE_WAIT_FOR_SIGNAL,
+                             &waitForSignalMsg,
+                             sizeof(waitForSignalMsg),
+                             &waitForSignalMsg,
+                             sizeof(waitForSignalMsg),
+                             NULL,
+                             NULL);
+        if (!SUCCEEDED(hr))
+        {
+            wprintf(L"Failed to launch %S\n", imageFileName);
+            exitCode = GetLastError();
+            goto Quickie;
+        }
+
+        //
+        // Process died, get its exit code
+        //
+        exitCode = waitForSignalMsg.ExitStatus;
+    }
+    else
+    {
+        //
+        // Wait for Linux process to exit, or for console input
+        //
+        waitArray[0] = UlongToHandle(processHandle);
+        waitArray[1] = GetStdHandle(STD_INPUT_HANDLE);
+        while (WaitForMultipleObjects(RTL_NUMBER_OF(waitArray),
+                                      waitArray,
+                                      FALSE,
+                                      INFINITE))
         {
             //
-            // Write into the Linux input pipe the character
+            // Read the console input -- we only care about key pressses
             //
-            WriteFile(inPipe,
-                      &record.Event.KeyEvent.uChar.AsciiChar,
-                      1, 
-                      &bytesWritten,
-                      NULL);
+            assert(useRs2Logic == FALSE);
+            ReadConsoleInput(waitArray[1], &record, 1, &eventsRead);
+            if ((record.EventType == KEY_EVENT) &&
+                (record.Event.KeyEvent.bKeyDown != FALSE))
+            {
+                //
+                // Write into the Linux input pipe the character
+                //
+                WriteFile(inPipe,
+                          &record.Event.KeyEvent.uChar.AsciiChar,
+                          1, 
+                          &bytesWritten,
+                          NULL);
+            }
         }
-    }
 
-    //
-    // Process died, get its exit code
-    //
-    GetExitCodeProcess(UlongToHandle(processHandle), &exitCode);
+        //
+        // Process died, get its exit code
+        //
+        GetExitCodeProcess(UlongToHandle(processHandle), &exitCode);
+    }
 
 Quickie:
     //

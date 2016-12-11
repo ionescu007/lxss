@@ -32,12 +32,13 @@ main (
     HANDLE hToken;
     ADSS_IPC_CONNECTION_MARSHAL_FORK_TOKEN_MSG tokenMsg;
     HANDLE clientHandle;
+    BOOLEAN useRs2Logic;
     UNREFERENCED_PARAMETER(Arguments);
 
     //
     // Print banner and help if we got invalid arguments
     //
-    wprintf(L"LxServer v1.2.0 -- (c) Copyright 2016 Alex Ionescu\n");
+    wprintf(L"LxServer v1.3.0 -- (c) Copyright 2016 Alex Ionescu\n");
     wprintf(L"Visit http://github.com/ionescu007/lxss for more information.\n\n");
 
     //
@@ -195,11 +196,28 @@ main (
     }
 
     //
-    // Now register an ADSS Bus Server
+    // Check if this is RS2
     //
-    hr = (*iLxInstance)->RegisterAdssBusServer(iLxInstance,
-                                               "lxserver",
-                                               &serverHandle);
+    useRs2Logic = (*g_BuildNumber >= 14950);
+    if (useRs2Logic == FALSE)
+    {
+        //
+        // Now register an ADSS Bus Server
+        //
+        hr = (*iLxInstance)->RegisterAdssBusServer(iLxInstance,
+                                                   "lxserver",
+                                                   &serverHandle);
+    }
+    else
+    {
+        //
+        // Now register an ADSS Bus Server
+        //
+        hr = ((PLX_INSTANCE_V2)*iLxInstance)->RegisterAdssBusServer(iLxInstance,
+                                                                    "lxserver",
+                                                                    &serverHandle);
+    }
+
     if (!SUCCEEDED(hr))
     {
         wprintf(L"Failed to register 'lxserver'");

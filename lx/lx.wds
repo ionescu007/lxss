@@ -2,19 +2,23 @@ $$ Define helper aliases for easy maintenance of the structure offsets
 .block { aS G_HeaderSize         @@masm(@$ptrsize)                                                 }
 .block { aS G_InstanceListOffset (${G_HeaderSize})                                                 }
 
+$$ Reset registers we use
+r @$t0 = 0
+r @$t1 = 0
+r @$t2 = 0
+
 .block
 {
-    $$ Detect RS2 systems (with no symbols for now)
-    .if (dwo(fffff780`00000260) >= 38a4)
-    {
-        $$ Set the root global pointer
-        r @$t0 = lxcore!LxpRoutines - 4 * @$ptrsize
-    }
-    .else
-    {
-        $$ Set the root global pointer
-        r @$t0 = lxcore!LxGlobal
-    }
+    $$ Set the root global pointer
+    .catch { r @$t0 = lxcore!LxGlobal }
+	
+	$$ Detect systems with no symbols
+	.if (@$t0 == 0)
+	{
+	    $$ Error out for now
+		.printf "This script cannot function without LxGlobal symbols"
+		.leave
+	}
 
     $$ Print information on the LX_GLOBAL_DATA structure
     .printf /D "<b><u>Lx Global Data 0x%P\n\n</u></b>", @$t0
